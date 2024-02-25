@@ -4,7 +4,7 @@ import copy
 import langid
 import re
 import unicodedata
-import spacy
+import spacy_fi_experimental_web_md
 from collections import Counter
 from itertools import islice
 from pathlib import Path
@@ -40,7 +40,7 @@ def main():
         wordcounts.update(tokenize(text))
 
     print(f'Processed {doc_count} documents')
-    print(f'{wordcounts.total()} tokens, {len(wordcounts)} unique')
+    print(f'{wordcounts.total()} tokens in total, {len(wordcounts)} unique')
 
     with open(result_path / 'frequencies-mc4-fi', 'w') as f:
         for word, freq in wordcounts.most_common():
@@ -48,17 +48,17 @@ def main():
 
 
 def create_tokenizer():
-    nlp = spacy.load('spacy_fi_experimental_web_md', disable=['ner'])
+    tokenizer = spacy_fi_experimental_web_md.fi.FinnishExtended().tokenizer
 
-    def tokenizer(text):
-        doc = nlp(text)
-        tokens = (t.orth_ for t in doc)
+    def tokenize(text):
+        doc = tokenizer(text)
+        tokens = (t.text for t in doc)
         # Ignore tokens that are mostly digits: dates, times, prices, etc.
         #tokens = (t for t in tokens if sum(x.isdigit() for x in t) < len(t)/2)
         tokens = (t for t in tokens if len(t) < 30)
         return list(tokens)
 
-    return tokenizer
+    return tokenize
 
 
 def cleanup_text(x):
