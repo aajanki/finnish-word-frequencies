@@ -2,10 +2,12 @@
 
 import copy
 import langid
+import json
 import re
 import unicodedata
 import spacy_fi_experimental_web_md
 from collections import Counter
+from datetime import datetime, timezone
 from itertools import islice
 from pathlib import Path
 from datasets import load_dataset
@@ -16,6 +18,7 @@ from spacy.lang.char_classes import ALPHA
 from .classifiers import SpamClassifier, CodeClassifier
 
 def main():
+    start_time = datetime.now(tz=timezone.utc)
     max_texts = 1000
     result_path = Path('results')
     spam_classifier = SpamClassifier('models/spam_classifier_weights.json')
@@ -45,6 +48,15 @@ def main():
     with open(result_path / 'frequencies-mc4-fi', 'w') as f:
         for word, freq in wordcounts.most_common():
             f.write(f'{freq}\t{word}\n')
+
+    meta = {
+        'timestamp': start_time.isoformat(timespec='seconds'),
+        'num_documents': doc_count,
+        'total_tokens': wordcounts.total(),
+        'unique_tokens': len(wordcounts),
+    }
+    with open(result_path / 'frequencies-mc4-fi.meta', 'w') as f:
+        json.dump(meta, f, indent=2, ensure_ascii=False)
 
 
 def create_tokenizer():
@@ -78,6 +90,8 @@ def cleanup_punctuation(x):
     text = re.sub(r'(?<=\s)[\ufe00-\ufe0f]+', '', text)
     text = re.sub(r'\s\.(?=[{a}]{{4}})'.format(a=ALPHA), '. ', text)
     text = re.sub(r'\.\.\.(?=[-+*/!?%(),:;<>€$£"\'])', '... ', text)
+    text = re.sub(r'([][<>"”\'´#*][.,!?])(?=[{a}])'.format(a=ALPHA), r'\1 ', text)
+    text = re.sub(r'(?<=[.,!?])([][<>"”\'´#*])', r' \1', text)
     out = copy.deepcopy(x)
     out['text'] = text
     return out
