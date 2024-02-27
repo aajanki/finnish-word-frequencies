@@ -5,7 +5,6 @@ import langid
 import json
 import re
 import unicodedata
-import spacy_fi_experimental_web_md
 from collections import Counter
 from datetime import datetime, timezone
 from itertools import islice
@@ -16,10 +15,11 @@ from urllib.parse import urlparse
 from ftfy import fix_text
 from spacy.lang.char_classes import ALPHA
 from .classifiers import SpamClassifier, CodeClassifier
+from .finnish import FinnishCustom
 
 def main():
     start_time = datetime.now(tz=timezone.utc)
-    max_texts = 1000
+    max_texts = 10000
     result_path = Path('results')
     spam_classifier = SpamClassifier('models/spam_classifier_weights.json')
     code_classifier = CodeClassifier('models/code_classifier_weights.json')
@@ -60,14 +60,13 @@ def main():
 
 
 def create_tokenizer():
-    tokenizer = spacy_fi_experimental_web_md.fi.FinnishExtended().tokenizer
+    tokenizer = FinnishCustom().tokenizer
 
     def tokenize(text):
         doc = tokenizer(text)
         tokens = (t.text for t in doc)
-        # Ignore tokens that are mostly digits: dates, times, prices, etc.
-        #tokens = (t for t in tokens if sum(x.isdigit() for x in t) < len(t)/2)
         tokens = (t for t in tokens if len(t) < 30)
+        tokens = (t for t in tokens if not t.isspace())
         return list(tokens)
 
     return tokenize
@@ -85,13 +84,22 @@ def cleanup_text(x):
 
 def cleanup_punctuation(x):
     text = re.sub(r'[\s\u2800]+', ' ', x['text'])
-    text = re.sub(r'[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F\u00AD\u200B-\u200D\u2060\uFEFF\uFFF0-\uFFFF]', '', text)
-    text = re.sub(r'[\u0530-\u1DBF\u2C00-\uA6FF\uA800-\uAB2F\uAB70-\uD7FF\uE000-\uFAFF\uFB50-\uFDFF]+', ' ', text)
+    text = re.sub(
+        r'[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F\u00AD\u200B-\u200D\u2060\uFEFF\uFFF0-\uFFFF]',
+        '',
+        text
+    )
+    text = re.sub(
+        r'[\u0530-\u1DBF\u2C00-\uA6FF\uA800-\uAB2F\uAB70-\uD7FF\uE000-\uFAFF\uFB50-\uFDFF]+',
+        ' ',
+        text
+    )
     text = re.sub(r'(?<=\s)[\ufe00-\ufe0f]+', '', text)
     text = re.sub(r'\s\.(?=[{a}]{{4}})'.format(a=ALPHA), '. ', text)
     text = re.sub(r'\.\.\.(?=[-+*/!?%(),:;<>€$£"\'])', '... ', text)
     text = re.sub(r'([][<>"”\'´#*][.,!?])(?=[{a}])'.format(a=ALPHA), r'\1 ', text)
     text = re.sub(r'(?<=[.,!?])([][<>"”\'´#*])', r' \1', text)
+    text = re.sub(r'\s+', ' ', text)
     out = copy.deepcopy(x)
     out['text'] = text
     return out
