@@ -98,7 +98,7 @@ def cleanup_punctuation(x):
     text = re.sub(r'\s\.(?=[{a}]{{4}})'.format(a=ALPHA), '. ', text)
     text = re.sub(r'\.\.\.(?=[-+*/!?%(),:;<>€$£"\'])', '... ', text)
     text = re.sub(r'([][<>"”\'´#*][.,!?])(?=[{a}])'.format(a=ALPHA), r'\1 ', text)
-    text = re.sub(r'(?<=[.,!?])([][<>"”\'´#*])', r' \1', text)
+    text = re.sub(r'(?<=[.,!?])([][()<>«»"”\'´#*])', r' \1', text)
     text = re.sub(r'\s+', ' ', text)
     out = copy.deepcopy(x)
     out['text'] = text
