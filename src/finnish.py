@@ -7,7 +7,7 @@ from spacy_fi_experimental_web_md.fi import FinnishExDefaults
 # spacy_fi_experimental_web_md 0.14
 
 _improved_prefixes = FinnishExDefaults.prefixes + [
-    r'\|(?=\w)', '\u200e'
+    r'\|(?=\w)'
 ]
 _improved_infixes = FinnishExDefaults.infixes + [
     r'\[', r'\]', '<', '>', '«', '»', '·', '•', r'\|', r'(?<=\w)\)(?=\(\w)', r'(?<=\w\))\((?=\w)',
@@ -15,7 +15,7 @@ _improved_infixes = FinnishExDefaults.infixes + [
     r'!(?=[!?])', r'\?(?=!)', r'(?<=!)[!?]', r'(?<=\?)!'
 ]
 _improved_suffixes = FinnishExDefaults.suffixes + [
-    r'(?<=\w)\|', r'(?<=\w\w)[\\]', '\u200e', '\u200f'
+    r'(?<=\w)\|', r'(?<=\w\w)[\\]'
 ]
 
 class FinnishCustomDefaults(FinnishDefaults):

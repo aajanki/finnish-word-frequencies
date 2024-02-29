@@ -85,7 +85,7 @@ def cleanup_text(x):
 def cleanup_punctuation(x):
     text = re.sub(r'[\s\u2800]+', ' ', x['text'])
     text = re.sub(
-        r'[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F\u00AD\u200B-\u200D\u2060\uFEFF\uFFF0-\uFFFF]',
+        r'[\u0000-\u0008\u000E-\u001F\u007F-\u0084\u0086-\u009F\u00AD\u200B-\u200F\u2060\uFEFF\uFFF0-\uFFFF]',
         '',
         text
     )
