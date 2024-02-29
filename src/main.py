@@ -42,6 +42,12 @@ def main():
         text = item['text']
         wordcounts.update(tokenize(text))
 
+        if doc_count % 200000 == 0:
+            # This will leak memory unless the tokenizer is re-created
+            # periodically
+            del tokenizer
+            tokenize = create_tokenizer()
+
     print(f'Processed {doc_count} documents')
     print(f'{wordcounts.total()} tokens in total, {len(wordcounts)} unique')
 

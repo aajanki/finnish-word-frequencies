@@ -10,6 +10,16 @@ pip install -r requirements.txt
 python -m src.main
 ```
 
+In Docker:
+
+```
+sudo docker build --network host --tag fifrequencies:latest .
+docker volume create fi-frequencies
+docker volume inspect fi-frequencies
+docker run -d --rm --mount source=fi-frequencies,target=/app/results --dns 8.8.8.8 fifrequencies:latest
+```
+
+
 ## Text classifiers
 
 The models directory contains simple models for detecting spam and
