@@ -7,18 +7,17 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-python -m src.main
+python -m src.main --limit 10000
 ```
 
 In Docker:
 
 ```
-sudo docker build --network host --tag fifrequencies:latest .
+docker build --network host --tag fifrequencies:latest .
 docker volume create fi-frequencies
 docker volume inspect fi-frequencies
-docker run -d --rm --mount source=fi-frequencies,target=/app/results --dns 8.8.8.8 fifrequencies:latest
+docker run -it --rm --mount source=fi-frequencies,target=/app/results --dns 8.8.8.8 fifrequencies:latest python -m src.main --limit 10000
 ```
-
 
 ## Text classifiers
 

@@ -1,8 +1,10 @@
 # Compute word frequencies in mc4-fi
 
+import click
 import copy
 import langid
 import json
+import os.path
 import re
 import unicodedata
 from collections import Counter
@@ -14,18 +16,22 @@ from tqdm import tqdm
 from urllib.parse import urlparse
 from ftfy import fix_text
 from spacy.lang.char_classes import ALPHA
+from smart_open import open
 from .classifiers import SpamClassifier, CodeClassifier
 from .finnish import FinnishCustom
 
-def main():
+@click.command()
+@click.option('--limit', default=0, help='Maximum number of documents to process')
+@click.option('--destination', default='results',
+              help='Directory or S3 path where the results are to be stored')
+def main(limit, destination):
     start_time = datetime.now(tz=timezone.utc)
-    max_texts = 10000
-    result_path = Path('results')
     spam_classifier = SpamClassifier('models/spam_classifier_weights.json')
     code_classifier = CodeClassifier('models/code_classifier_weights.json')
     tokenize = create_tokenizer()
 
-    result_path.mkdir(parents=True, exist_ok=True)
+    if not destination.startswith('s3://'):
+        Path(destination).mkdir(parents=True, exist_ok=True)
 
     dataset = load_dataset('mc4', 'fi', split='train', streaming=True, trust_remote_code=True)
     dataset = (cleanup_text(x) for x in dataset)
@@ -35,9 +41,15 @@ def main():
     dataset = (x for x in dataset if is_finnish(x))
     dataset = (cleanup_punctuation(x) for x in dataset)
 
+    smoothing = 0.02
+    if limit > 0:
+        dataset = tqdm(islice(dataset, limit), total=limit, smoothing=smoothing)
+    else:
+        dataset = tqdm(dataset, smoothing=smoothing)
+
     doc_count = 0
     wordcounts = Counter()
-    for item in tqdm(islice(dataset, max_texts), total=max_texts, smoothing=0.02):
+    for item in dataset:
         doc_count += 1
         text = item['text']
         wordcounts.update(tokenize(text))
@@ -50,8 +62,9 @@ def main():
 
     print(f'Processed {doc_count} documents')
     print(f'{wordcounts.total()} tokens in total, {len(wordcounts)} unique')
+    print(f'Writing results to {destination}')
 
-    with open(result_path / 'frequencies-mc4-fi', 'w') as f:
+    with open(os.path.join(destination, 'frequencies-mc4-fi.bz2'), 'w') as f:
         for word, freq in wordcounts.most_common():
             f.write(f'{freq}\t{word}\n')
 
@@ -61,7 +74,7 @@ def main():
         'total_tokens': wordcounts.total(),
         'unique_tokens': len(wordcounts),
     }
-    with open(result_path / 'frequencies-mc4-fi.meta', 'w') as f:
+    with open(os.path.join(destination, 'frequencies-mc4-fi.meta'), 'w') as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
 
 
