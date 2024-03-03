@@ -26,7 +26,9 @@ from .finnish import FinnishCustom
               help='Directory or S3 path where the results are to be stored')
 @click.option('--progress-interval', default=0.1,
               help='Progress bar update interval in seconds')
-def main(limit, destination, progress_interval):
+@click.option('--snapshot-interval', default=1000000000,
+              help='Save snapshot after processing this many documents')
+def main(limit, destination, progress_interval, snapshot_interval):
     start_time = datetime.now(tz=timezone.utc)
     spam_classifier = SpamClassifier('models/spam_classifier_weights.json')
     code_classifier = CodeClassifier('models/code_classifier_weights.json')
@@ -49,12 +51,14 @@ def main(limit, destination, progress_interval):
         dataset = tqdm(
             islice(dataset, limit),
             total=limit,
+            smoothing=0.02,
             mininterval=mininterval,
             maxinterval=maxinterval
         )
     else:
         dataset = tqdm(
             dataset,
+            smoothing=0.02,
             mininterval=mininterval,
             maxinterval=maxinterval
         )
@@ -72,11 +76,24 @@ def main(limit, destination, progress_interval):
             del tokenizer
             tokenize = create_tokenizer()
 
+        if doc_count % snapshot_interval == 0:
+            print(f'Saving a snapshot after processing {doc_count} documents')
+            save_results(wordcounts, doc_count, start_time, destination, f'{doc_count:09d}')
+
     print(f'Processed {doc_count} documents')
     print(f'{wordcounts.total()} tokens in total, {len(wordcounts)} unique')
     print(f'Writing results to {destination}')
 
-    with open(os.path.join(destination, 'frequencies-mc4-fi.bz2'), 'w') as f:
+    save_results(wordcounts, doc_count, start_time, destination)
+
+
+def save_results(wordcounts, doc_count, start_time, destination, suffix=None):
+    if suffix:
+        basename = f'frequencies-mc4-fi-{suffix}'
+    else:
+        basename = 'frequencies-mc4-fi'
+
+    with open(os.path.join(destination, f'{basename}.bz2'), 'w') as f:
         for word, freq in wordcounts.most_common():
             f.write(f'{freq}\t{word}\n')
 
@@ -86,7 +103,7 @@ def main(limit, destination, progress_interval):
         'total_tokens': wordcounts.total(),
         'unique_tokens': len(wordcounts),
     }
-    with open(os.path.join(destination, 'frequencies-mc4-fi.meta'), 'w') as f:
+    with open(os.path.join(destination, f'{basename}.meta'), 'w') as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
 
 

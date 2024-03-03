@@ -1,6 +1,7 @@
 # Finnish word frequencies
 
-Counting the word frequencies in the Finnish subset of the MC4 dataset.
+A script for counting the word frequencies in the Finnish subset of
+[the MC4 dataset](https://huggingface.co/datasets/mc4).
 
 ```
 python3 -m venv venv
