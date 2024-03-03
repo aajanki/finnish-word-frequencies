@@ -13,7 +13,7 @@ python -m src.main --limit 10000
 In Docker:
 
 ```
-docker build --network host --tag fifrequencies:latest .
+docker build --network host --tag fi-vocabulary:latest .
 docker volume create fi-frequencies
 docker volume inspect fi-frequencies
 docker run -it --rm --mount source=fi-frequencies,target=/app/results --dns 8.8.8.8 fifrequencies:latest python -m src.main --limit 10000

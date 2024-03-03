@@ -24,7 +24,9 @@ from .finnish import FinnishCustom
 @click.option('--limit', default=0, help='Maximum number of documents to process')
 @click.option('--destination', default='results',
               help='Directory or S3 path where the results are to be stored')
-def main(limit, destination):
+@click.option('--progress-interval', default=0.1,
+              help='Progress bar update interval in seconds')
+def main(limit, destination, progress_interval):
     start_time = datetime.now(tz=timezone.utc)
     spam_classifier = SpamClassifier('models/spam_classifier_weights.json')
     code_classifier = CodeClassifier('models/code_classifier_weights.json')
@@ -41,11 +43,21 @@ def main(limit, destination):
     dataset = (x for x in dataset if is_finnish(x))
     dataset = (cleanup_punctuation(x) for x in dataset)
 
-    smoothing = 0.02
+    mininterval = progress_interval
+    maxinterval = max(progress_interval, 10)
     if limit > 0:
-        dataset = tqdm(islice(dataset, limit), total=limit, smoothing=smoothing)
+        dataset = tqdm(
+            islice(dataset, limit),
+            total=limit,
+            mininterval=mininterval,
+            maxinterval=maxinterval
+        )
     else:
-        dataset = tqdm(dataset, smoothing=smoothing)
+        dataset = tqdm(
+            dataset,
+            mininterval=mininterval,
+            maxinterval=maxinterval
+        )
 
     doc_count = 0
     wordcounts = Counter()
