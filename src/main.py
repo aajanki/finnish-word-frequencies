@@ -34,6 +34,13 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
     code_classifier = CodeClassifier('models/code_classifier_weights.json')
     tokenize = create_tokenizer()
 
+    if destination:
+        print(f'destination = {destination}')
+    if skip:
+        print(f'skip = {skip}')
+    if limit:
+        print(f'limit = {limit}')
+
     dataset = load_dataset('mc4', 'fi', split='train', streaming=True, trust_remote_code=True)
     if skip > 0:
         dataset = dataset.skip(skip)
