@@ -60,6 +60,9 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
         text = item['text']
         wordcounts.update(tokenize(text))
 
+        if doc_count % 100000 == 0:
+            dataset.write(f'Processed {doc_count} documents...')
+
         if doc_count % 200000 == 0:
             # This will leak memory unless the tokenizer is re-created
             # periodically
@@ -67,7 +70,7 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
             tokenize = create_tokenizer()
 
         if doc_count % snapshot_interval == 0:
-            print(f'Saving a snapshot after processing {doc_count} documents')
+            dataset.write(f'Saving a snapshot after processing {doc_count} documents')
             save_results(wordcounts, skip, limit, doc_count, start_time, destination, f'{doc_count:09d}')
 
     print(f'Processed {doc_count} documents')
