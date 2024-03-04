@@ -9,7 +9,6 @@ import re
 import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
-from itertools import islice
 from pathlib import Path
 from datasets import load_dataset
 from tqdm import tqdm
@@ -21,47 +20,38 @@ from .classifiers import SpamClassifier, CodeClassifier
 from .finnish import FinnishCustom
 
 @click.command()
-@click.option('--limit', default=0, help='Maximum number of documents to process')
 @click.option('--destination', default='results',
               help='Directory or S3 path where the results are to be stored')
+@click.option('--skip', default=0, help='Number of document to skip')
+@click.option('--limit', default=0, help='Maximum number of documents to process')
 @click.option('--progress-interval', default=0.1,
               help='Progress bar update interval in seconds')
 @click.option('--snapshot-interval', default=1000000000,
               help='Save snapshot after processing this many documents')
-def main(limit, destination, progress_interval, snapshot_interval):
+def main(destination, skip, limit, progress_interval, snapshot_interval):
     start_time = datetime.now(tz=timezone.utc)
     spam_classifier = SpamClassifier('models/spam_classifier_weights.json')
     code_classifier = CodeClassifier('models/code_classifier_weights.json')
     tokenize = create_tokenizer()
 
-    if not destination.startswith('s3://'):
-        Path(destination).mkdir(parents=True, exist_ok=True)
-
     dataset = load_dataset('mc4', 'fi', split='train', streaming=True, trust_remote_code=True)
+    if skip > 0:
+        dataset = dataset.skip(skip)
+    if limit > 0:
+        dataset = dataset.take(limit)
     dataset = (cleanup_text(x) for x in dataset)
     dataset = (x for x in dataset if is_body_text(x))
     dataset = (x for x in dataset if not is_spam(x, spam_classifier))
     dataset = (x for x in dataset if not is_code(x, code_classifier))
     dataset = (x for x in dataset if is_finnish(x))
     dataset = (cleanup_punctuation(x) for x in dataset)
-
-    mininterval = progress_interval
-    maxinterval = max(progress_interval, 10)
-    if limit > 0:
-        dataset = tqdm(
-            islice(dataset, limit),
-            total=limit,
-            smoothing=0.02,
-            mininterval=mininterval,
-            maxinterval=maxinterval
-        )
-    else:
-        dataset = tqdm(
-            dataset,
-            smoothing=0.02,
-            mininterval=mininterval,
-            maxinterval=maxinterval
-        )
+    dataset = tqdm(
+        dataset,
+        total=limit or None,
+        smoothing=0.02,
+        mininterval=progress_interval,
+        maxinterval=max(progress_interval, 10)
+    )
 
     doc_count = 0
     wordcounts = Counter()
@@ -78,16 +68,19 @@ def main(limit, destination, progress_interval, snapshot_interval):
 
         if doc_count % snapshot_interval == 0:
             print(f'Saving a snapshot after processing {doc_count} documents')
-            save_results(wordcounts, doc_count, start_time, destination, f'{doc_count:09d}')
+            save_results(wordcounts, skip, limit, doc_count, start_time, destination, f'{doc_count:09d}')
 
     print(f'Processed {doc_count} documents')
     print(f'{wordcounts.total()} tokens in total, {len(wordcounts)} unique')
     print(f'Writing results to {destination}')
 
-    save_results(wordcounts, doc_count, start_time, destination)
+    save_results(wordcounts, skip, limit, doc_count, start_time, destination)
 
 
-def save_results(wordcounts, doc_count, start_time, destination, suffix=None):
+def save_results(wordcounts, skip, limit, doc_count, start_time, destination, suffix=None):
+    if not destination.startswith('s3://'):
+        Path(destination).mkdir(parents=True, exist_ok=True)
+
     if suffix:
         basename = f'frequencies-mc4-fi-{suffix}'
     else:
@@ -99,13 +92,16 @@ def save_results(wordcounts, doc_count, start_time, destination, suffix=None):
 
     meta = {
         'timestamp': start_time.isoformat(timespec='seconds'),
-        'num_documents': doc_count,
+        'documents_processed': doc_count,
         'total_tokens': wordcounts.total(),
         'unique_tokens': len(wordcounts),
     }
+    if skip:
+        meta['skip'] = skip
+    if limit:
+        meta['limit'] = limit
     with open(os.path.join(destination, f'{basename}.meta'), 'w') as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
-
 
 def create_tokenizer():
     tokenizer = FinnishCustom().tokenizer
