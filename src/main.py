@@ -73,7 +73,7 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
         if doc_count % 200000 == 0:
             # This will leak memory unless the tokenizer is re-created
             # periodically
-            del tokenizer
+            del tokenize
             tokenize = create_tokenizer()
 
         if doc_count % snapshot_interval == 0:
