@@ -70,7 +70,7 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
         if doc_count % 100000 == 0:
             print(f'Processed {doc_count} documents...')
 
-        if doc_count % 200000 == 0:
+        if doc_count % 100000 == 0:
             # This will leak memory unless the tokenizer is re-created
             # periodically
             del tokenize
