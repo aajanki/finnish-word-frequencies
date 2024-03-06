@@ -26,7 +26,7 @@ from .finnish import FinnishCustom
 @click.option('--limit', default=0, help='Maximum number of documents to process')
 @click.option('--progress-interval', default=0.1,
               help='Progress bar update interval in seconds')
-@click.option('--snapshot-interval', default=1000000000,
+@click.option('--snapshot-interval', default=0,
               help='Save snapshot after processing this many documents')
 def main(destination, skip, limit, progress_interval, snapshot_interval):
     start_time = datetime.now(tz=timezone.utc)
@@ -55,7 +55,7 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
     dataset = tqdm(
         dataset,
         smoothing=0.02,
-        mininterval=progress_interval,
+        mininterval=max(progress_interval, 0.1),
         maxinterval=max(progress_interval, 10)
     )
 
@@ -75,7 +75,7 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
             del tokenize
             tokenize = create_tokenizer()
 
-        if doc_count % snapshot_interval == 0:
+        if snapshot_interval > 0 and doc_count % snapshot_interval == 0:
             print(f'Saving a snapshot after processing {doc_count} documents')
             save_results(wordcounts, skip, limit, doc_count, start_time, destination, f'{doc_count:09d}')
 
