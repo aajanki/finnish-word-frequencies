@@ -46,18 +46,19 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
         dataset = dataset.skip(skip)
     if limit > 0:
         dataset = dataset.take(limit)
+    dataset = tqdm(
+        dataset,
+        total=limit,
+        smoothing=0.02,
+        mininterval=max(progress_interval, 0.1),
+        maxinterval=max(progress_interval, 10)
+    )
     dataset = (cleanup_text(x) for x in dataset)
     dataset = (x for x in dataset if is_body_text(x))
     dataset = (x for x in dataset if not is_spam(x, spam_classifier))
     dataset = (x for x in dataset if not is_code(x, code_classifier))
     dataset = (x for x in dataset if is_finnish(x))
     dataset = (cleanup_punctuation(x) for x in dataset)
-    dataset = tqdm(
-        dataset,
-        smoothing=0.02,
-        mininterval=max(progress_interval, 0.1),
-        maxinterval=max(progress_interval, 10)
-    )
 
     doc_count = 0
     wordcounts = Counter()
