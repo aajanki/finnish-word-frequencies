@@ -54,7 +54,6 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
     dataset = (cleanup_punctuation(x) for x in dataset)
     dataset = tqdm(
         dataset,
-        total=limit or None,
         smoothing=0.02,
         mininterval=progress_interval,
         maxinterval=max(progress_interval, 10)
