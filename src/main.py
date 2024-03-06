@@ -1,4 +1,4 @@
-# Compute word frequencies in mc4-fi
+# Compute word frequencies in c4-fi
 
 import click
 import copy
@@ -41,7 +41,7 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
     if limit:
         print(f'limit = {limit}')
 
-    dataset = load_dataset('mc4', 'fi', split='train', streaming=True, trust_remote_code=True)
+    dataset = load_dataset('allenai/c4', 'fi', split='train', streaming=True, trust_remote_code=True)
     if skip > 0:
         dataset = dataset.skip(skip)
     if limit > 0:
