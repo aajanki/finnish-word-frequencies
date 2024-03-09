@@ -6,6 +6,7 @@ import langid
 import json
 import os.path
 import re
+import sys
 import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
@@ -26,9 +27,9 @@ from .finnish import FinnishCustom
 @click.option('--limit', default=0, help='Maximum number of documents to process')
 @click.option('--progress-interval', default=0.1,
               help='Progress bar update interval in seconds')
-@click.option('--snapshot-interval', default=0,
-              help='Save snapshot after processing this many documents')
-def main(destination, skip, limit, progress_interval, snapshot_interval):
+@click.option('--checkpoint-interval', default=0,
+              help='Save checkpoint after this many documents')
+def main(destination, skip, limit, progress_interval, checkpoint_interval):
     start_time = datetime.now(tz=timezone.utc)
     spam_classifier = SpamClassifier('models/spam_classifier_weights.json')
     code_classifier = CodeClassifier('models/code_classifier_weights.json')
@@ -40,16 +41,20 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
         print(f'skip = {skip}')
     if limit:
         print(f'limit = {limit}')
+    if checkpoint_interval:
+        print(f'checkpoint interval = {checkpoint_interval}')
 
     dataset = load_dataset('allenai/c4', 'fi', split='train', streaming=True, trust_remote_code=True)
     if skip > 0:
         dataset = dataset.skip(skip)
     if limit > 0:
         dataset = dataset.take(limit)
+    dataset = label_with_index(dataset)
     dataset = tqdm(
         dataset,
         total=limit,
         smoothing=0.02,
+        file=sys.stdout,
         mininterval=max(progress_interval, 0.1),
         maxinterval=max(progress_interval, 10)
     )
@@ -60,39 +65,59 @@ def main(destination, skip, limit, progress_interval, snapshot_interval):
     dataset = (x for x in dataset if is_finnish(x))
     dataset = (cleanup_punctuation(x) for x in dataset)
 
-    doc_count = 0
+    num_after_filtering = 0
+    num_processed = 0
     wordcounts = Counter()
     for item in dataset:
-        doc_count += 1
+        num_after_filtering += 1
+        num_processed = item['i'] + 1
         text = item['text']
         wordcounts.update(tokenize(text))
 
-        if doc_count % 100000 == 0:
-            print(f'Processed {doc_count} documents...')
+        if num_processed % 100000 == 0:
+            print(f'Processed {num_processed} documents...')
 
-        if doc_count % 100000 == 0:
+        if num_after_filtering % 100000 == 0:
             # This will leak memory unless the tokenizer is re-created
             # periodically
             del tokenize
             tokenize = create_tokenizer()
 
-        if snapshot_interval > 0 and doc_count % snapshot_interval == 0:
-            print(f'Saving a snapshot after processing {doc_count} documents')
-            save_results(wordcounts, skip, limit, doc_count, start_time, destination, f'{doc_count:09d}')
+        if checkpoint_interval > 0 and num_processed % checkpoint_interval == 0:
+            print(f'Saving a checkpoint after processing {num_processed} documents')
+            save_results(
+                wordcounts,
+                skip,
+                limit,
+                num_after_filtering,
+                num_processed,
+                start_time,
+                destination,
+                f'{num_processed:09d}'
+            )
 
-    print(f'Processed {doc_count} documents')
+    print(f'Processed {num_processed} documents')
     print(f'{wordcounts.total()} tokens in total, {len(wordcounts)} unique')
     print(f'Writing results to {destination}')
 
-    save_results(wordcounts, skip, limit, doc_count, start_time, destination)
+    save_results(wordcounts, skip, limit, num_after_filtering, num_processed, start_time, destination)
 
 
-def save_results(wordcounts, skip, limit, doc_count, start_time, destination, suffix=None):
+def save_results(
+        wordcounts,
+        skip,
+        limit,
+        num_after_filtering,
+        num_processed,
+        start_time,
+        destination,
+        checkpoint_label=None
+):
     if not destination.startswith('s3://'):
         Path(destination).mkdir(parents=True, exist_ok=True)
 
-    if suffix:
-        basename = f'frequencies-mc4-fi-{suffix}'
+    if checkpoint_label:
+        basename = f'frequencies-mc4-fi-{checkpoint_label}'
     else:
         basename = 'frequencies-mc4-fi'
 
@@ -102,7 +127,8 @@ def save_results(wordcounts, skip, limit, doc_count, start_time, destination, su
 
     meta = {
         'timestamp': start_time.isoformat(timespec='seconds'),
-        'documents_processed': doc_count,
+        'documents_processed': num_after_filtering,
+        'documents_processed_including_filtered': num_processed,
         'total_tokens': wordcounts.total(),
         'unique_tokens': len(wordcounts),
     }
@@ -112,6 +138,7 @@ def save_results(wordcounts, skip, limit, doc_count, start_time, destination, su
         meta['limit'] = limit
     with open(os.path.join(destination, f'{basename}.meta'), 'w') as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
+
 
 def create_tokenizer():
     tokenizer = FinnishCustom().tokenizer
@@ -124,6 +151,13 @@ def create_tokenizer():
         return list(tokens)
 
     return tokenize
+
+
+def label_with_index(dataset):
+    for i, x in enumerate(dataset):
+        out = copy.deepcopy(x)
+        out['i'] = i
+        yield out
 
 
 def cleanup_text(x):
