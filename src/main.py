@@ -67,15 +67,11 @@ def main(destination, skip, limit, progress_interval, checkpoint_interval):
 
     num_after_filtering = 0
     num_processed = 0
+    next_checkpoint = checkpoint_interval
     wordcounts = Counter()
     for item in dataset:
         num_after_filtering += 1
         num_processed = item['i'] + 1
-        text = item['text']
-        wordcounts.update(tokenize(text))
-
-        if num_processed % 100000 == 0:
-            print(f'Processed {num_processed} documents...')
 
         if num_after_filtering % 100000 == 0:
             # This will leak memory unless the tokenizer is re-created
@@ -83,19 +79,22 @@ def main(destination, skip, limit, progress_interval, checkpoint_interval):
             del tokenize
             tokenize = create_tokenizer()
 
-        if checkpoint_interval > 0 and num_processed % checkpoint_interval == 0:
-            print(f'Saving a checkpoint after processing {num_processed} documents')
+        if checkpoint_interval > 0 and item['i'] >= next_checkpoint:
+            print(f'Saving a checkpoint after processing {next_checkpoint} documents')
             save_results(
                 wordcounts,
                 skip,
                 limit,
-                num_after_filtering,
-                num_processed,
+                min(num_after_filtering - 1, next_checkpoint),
+                next_checkpoint,
                 start_time,
                 destination,
-                f'{num_processed:09d}'
+                f'{next_checkpoint:09d}'
             )
+            next_checkpoint = next_checkpoint + checkpoint_interval
 
+        wordcounts.update(tokenize(item['text']))
+            
     print(f'Processed {num_processed} documents')
     print(f'{wordcounts.total()} tokens in total, {len(wordcounts)} unique')
     print(f'Writing results to {destination}')
