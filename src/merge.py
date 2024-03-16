@@ -16,7 +16,7 @@ def main():
         print(f'Reading {path}')
 
         with open(path / 'frequencies-mc4-fi.bz2') as f:
-            for line in f.readlines():
+            for line in f:
                 [c, token] = line.strip('\n').split('\t', 1)
                 merged_frequencies[token] = merged_frequencies.get(token, 0) + int(c)
 
