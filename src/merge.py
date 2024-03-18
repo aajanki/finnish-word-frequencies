@@ -39,7 +39,7 @@ def main():
                 merged_meta.get('documents_processed_including_filtered', 0) + \
                 meta['documents_processed']
 
-    meta['unique_tokens'] = len(merged_frequencies)
+    merged_meta['unique_tokens'] = len(merged_frequencies)
 
     with open(destination / f'merged.bz2', 'w') as f:
         freq = sorted(merged_frequencies.items(), key=lambda x: (-x[1], x[0]))
