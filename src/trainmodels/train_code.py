@@ -16,12 +16,12 @@ from joblib import dump
 
 
 def main():
-    documents = json.load(open('luokittelut/js_eka.json'))
-    data = load_texts(documents, Path('documents'))
+    documents = json.load(open('trainingdata/js_eka.json'))
+    data = load_texts(documents, Path('trainingdata/documents/1'))
     data = featurize(data)
 
-    test_documents = json.load(open('luokittelut/js_opetus_002.json'))
-    test_data = load_texts(test_documents, Path('slices/batch_002'))
+    test_documents = json.load(open('trainingdata/js_opetus_002.json'))
+    test_data = load_texts(test_documents, Path('trainingdata/documents/2'))
     test_data = featurize(test_data)
     
     print(f'Loaded {sum(x == 1 for x in data["classes"])} code documents, '

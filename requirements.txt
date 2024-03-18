@@ -7,3 +7,5 @@ ftfy==6.1.3
 tqdm
 smart_open[s3]
 click
+numpy==1.26.4
+scikit-learn==1.4.0

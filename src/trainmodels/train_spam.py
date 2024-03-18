@@ -13,11 +13,11 @@ from sklearn.metrics import confusion_matrix
 from joblib import dump
 
 def main():
-    documents = json.load(open('luokittelut/opetus.json'))
-    test_documents = json.load(open('luokittelut/spam_opetus_002.json'))
+    documents = json.load(open('trainingdata/opetus.json'))
+    test_documents = json.load(open('trainingdata/spam_opetus_002.json'))
 
-    data = load_doc_features(documents, Path('trainingdata'), min_df=3)
-    test_data = load_doc_features(test_documents, Path('slices/batch_002'))
+    data = load_doc_features(documents, Path('trainingdata/documents/3'), min_df=3)
+    test_data = load_doc_features(test_documents, Path('trainingdata/documents/2'))
 
     print(f'Loaded {sum(data["spam"])} spam documents, '
           f'{len(data["documentId"]) - sum(data["spam"])} non-spam messages')

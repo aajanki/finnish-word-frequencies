@@ -26,6 +26,8 @@ The models directory contains simple models for detecting spam and
 computer code. They are used to filter out uninteresting documents.
 
 The models have been trained using the scripts at src/trainmodels with
-manually labelled training samples.
-
-TODO: add training data
+manually labelled training samples. The training data is under the
+trainingdata directory. The documents are part of the [C4
+dataset](https://huggingface.co/datasets/allenai/c4) which is made
+available under the [ODC Attribution
+license](https://opendatacommons.org/licenses/by/1-0/).
